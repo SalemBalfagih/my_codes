@@ -3,7 +3,7 @@
 - 🌱 I’m currently learning new programming languages and frameworks(Flutter) to improve my development skills and create more robust and efficient applications.
 - 💞 I’m looking to collaborate on exciting projects with like-minded individuals or companies that share my passion for creating exceptional mobile apps.
 - 📫 How to reach me: You can contact me through my email address salem.m.it.m@gmail.com
-- or WhatsApp https://wa.me/qr/U73HMYKDHYZ4D1
+-  WhatsApp https://wa.me/967773139096
 - / +967773139096
 
 <!---
