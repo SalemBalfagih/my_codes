@@ -44,11 +44,12 @@ CircleAvatar(
                 ),
               ),
               SliverList(
+                childCount: 10,
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
                     return NewsTile();
                   },
-                  childCount: 10,
+                 
                 ),
               )
             ],
