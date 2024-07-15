@@ -12,6 +12,7 @@ CircleAvatar(
     ),
   ),
 ),
+```
 
 ## إنشاء scroll للشاشة كاملة مع الاحتفاظ بالاداء بواسطة SliverList
 ```dart
