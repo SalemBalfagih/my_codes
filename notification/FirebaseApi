@@ -1,0 +1,205 @@
+// استيراد مكتبات Dart الأساسية
+import 'dart:convert'; // لتحويل البيانات بين JSON و Map
+import 'dart:developer'; // لتسجيل الرسائل في وحدة التحكم (console)
+
+// استيراد حزم Flutter و Firebase المطلوبة
+import 'package:cloud_firestore/cloud_firestore.dart'; // للتعامل مع قاعدة بيانات Firestore
+import 'package:flutter/services.dart'; // للوصول إلى ملفات داخل مجلد assets
+import 'package:flutter_local_notifications/flutter_local_notifications.dart'; // لإظهار إشعارات محلية على الجهاز
+import 'package:firebase_messaging/firebase_messaging.dart'; // للتعامل مع إشعارات FCM من Firebase
+import 'package:googleapis_auth/auth_io.dart'; // لتوثيق الخدمة (Service Account) مع Google APIs
+
+// كلاس لإدارة إشعارات Firebase في التطبيق
+class FirebaseApi {
+  // إنشاء نسخة من FirebaseMessaging للتعامل مع الإشعارات
+  final _firebaseMessage = FirebaseMessaging.instance;
+
+  // تيار (stream) من الإشعارات القادمة أثناء عمل التطبيق
+  final _messageStream = FirebaseMessaging.onMessage;
+
+  // متغيرات لتخزين توكن المستخدم والإدمن
+  static String? userToken;
+  static String? adminToken;
+
+  // Getter لإرجاع تيار الرسائل عند الحاجة
+  Stream get messageStream => _messageStream;
+
+  // كائن لإدارة الإشعارات المحلية (Local Notifications)
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+
+  // تهيئة الإشعارات: إعداد الأذونات وجلب التوكنات وربط الاستماع للرسائل
+  Future initNotification() async {
+    // جلب مستند الإدمن من Firestore (بناءً على الإيميل كـ id)
+    final adminDoc = await FirebaseFirestore.instance
+        .collection('admins')
+        .doc('a.ali2672@su.edu.eg')
+        .get();
+
+    // استخراج التوكن الخاص بالإدمن من قاعدة البيانات
+    adminToken = adminDoc.data()?['fcmToken'];
+
+    // طلب صلاحيات استلام الإشعارات من المستخدم
+    await _firebaseMessage.requestPermission();
+
+    // تهيئة الإشعارات المحلية
+    await _initLocalNotification();
+
+    // الحصول على توكن المستخدم الحالي من Firebase
+    userToken = await _firebaseMessage.getToken();
+
+    // تسجيل التوكنات في وحدة التحكم للمراجعة
+    log('FCM Token: $userToken');
+    log('Admin Token: $adminToken');
+
+    // استدعاء دالة إعداد إشعارات FCM
+    iniPushNotification();
+
+    // الاستماع للإشعارات أثناء عمل التطبيق في المقدمة (Foreground)
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      log('Foreground message received: ${message.data}');
+      showNotification(message);
+    });
+  }
+
+  // التعامل مع الإشعارات التي يتم فتحها أو استقبالها عند النقر
+  void handleNotification(RemoteMessage? message) {
+    if (message == null) return; // إذا لم تصل رسالة يتم تجاهلها
+
+    log('Notification received: ${message.data}');
+    showNotification(message); // عرض الإشعار المحلي عند استلامه
+  }
+
+  // إعداد استقبال الإشعارات عند فتح التطبيق من الإشعار
+  Future iniPushNotification() async {
+    // إذا تم فتح التطبيق من إشعار أثناء الإغلاق
+    FirebaseMessaging.instance.getInitialMessage().then(handleNotification);
+
+    // إذا تم فتح الإشعار أثناء أن التطبيق في الخلفية
+    FirebaseMessaging.onMessageOpenedApp.listen(handleNotification);
+  }
+
+  // تهيئة إعدادات الإشعارات المحلية
+  Future _initLocalNotification() async {
+    // إعداد مكون الإشعارات لأجهزة Android
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+
+    // إعداد عام للإشعارات (قد يشمل iOS لاحقاً)
+    final InitializationSettings initializationSettings =
+        InitializationSettings(android: initializationSettingsAndroid);
+
+    // تهيئة النظام المحلي للإشعارات مع استماع للنقر على الإشعار
+    await flutterLocalNotificationsPlugin.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse:
+          (NotificationResponse response) async {
+        final payload = response.payload; // البيانات الإضافية في الإشعار
+        log('Notification clicked with payload: $payload');
+      },
+    );
+  }
+
+  // دالة لعرض الإشعار على الجهاز باستخدام Flutter Local Notifications
+  Future showNotification(RemoteMessage message) async {
+    // إعداد تفاصيل الإشعار على نظام Android
+    const AndroidNotificationDetails androidPlatformChannelSpecifics =
+        AndroidNotificationDetails(
+      'your_channel_id', // معرف القناة
+      'your_channel_name', // اسم القناة (يظهر في الإعدادات)
+      channelDescription: 'your_channel_description', // وصف القناة
+      importance: Importance.max, // جعل الإشعار بأعلى أولوية
+      priority: Priority.high, // عرض الإشعار فوراً
+      ticker: 'ticker', // نص قصير يظهر مؤقتاً
+    );
+
+    // دمج الإعدادات العامة للإشعارات
+    const NotificationDetails platformChannelSpecifics =
+        NotificationDetails(android: androidPlatformChannelSpecifics);
+
+    // عرض الإشعار على الجهاز
+    await flutterLocalNotificationsPlugin.show(
+      0, // رقم معرف الإشعار (يمكن استخدامه لاحقاً لتحديث أو إلغاء إشعار)
+      message.notification?.title ?? 'New Notification', // العنوان
+      message.notification?.body ?? '', // النص
+      platformChannelSpecifics, // إعدادات العرض
+      payload: message.data.toString(), // تمرير البيانات الإضافية
+    );
+  }
+}
+
+// -------------------------------------------------------------
+// الكلاس الثاني: مسؤول عن إرسال إشعارات FCM من الخادم أو الخدمة
+// -------------------------------------------------------------
+class FcmSender {
+  final String _serviceAccountJsonPath; // مسار ملف الخدمة (service-account.json)
+  final String _projectId; // معرف المشروع في Firebase
+  late AutoRefreshingAuthClient _client; // عميل مصدّق تلقائيًا لتوثيق الطلبات
+
+  // المُنشئ الذي يستقبل المسار والمعرف
+  FcmSender(this._serviceAccountJsonPath, this._projectId);
+
+  // تهيئة التوثيق باستخدام Service Account
+  Future init() async {
+    // قراءة بيانات الحساب من ملف JSON
+    final accountCredentials = ServiceAccountCredentials.fromJson(
+      await readServiceAccountFromAssets(),
+    );
+
+    // تحديد الصلاحيات المطلوبة (التي تسمح بالإرسال لـ FCM)
+    final scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
+
+    // إنشاء عميل موثّق باستخدام بيانات الحساب
+    _client = await clientViaServiceAccount(accountCredentials, scopes);
+  }
+
+  // إرسال إشعار فعلي إلى جهاز باستخدام الـ deviceToken
+  Future sendNotification({
+    required String deviceToken, // توكن الجهاز المستهدف
+    required String title, // عنوان الإشعار
+    required String body, // محتوى الإشعار
+    Map<String, String>? data, // بيانات إضافية (اختيارية)
+  }) async {
+    // عنوان واجهة إرسال الرسائل الخاصة بـ Firebase
+    final url =
+        'https://fcm.googleapis.com/v1/projects/$_projectId/messages:send';
+
+    // بناء هيكل الرسالة المرسلة كـ JSON
+    final message = {
+      "message": {
+        "token": deviceToken,
+        "notification": {"title": title, "body": body},
+        if (data != null) "data": data, // إضافة البيانات الإضافية إن وجدت
+      },
+    };
+
+    // إرسال الطلب إلى خادم FCM عبر Google API
+    final response = await _client.post(
+      Uri.parse(url),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(message), // تحويل الرسالة إلى JSON
+    );
+
+    // التحقق من نجاح عملية الإرسال
+    if (response.statusCode == 200) {
+      print('Notification sent successfully!');
+      return true;
+    } else {
+      print(
+          'Failed to send notification: ${response.statusCode} - ${response.body}');
+      return false;
+    }
+  }
+
+  // إغلاق عميل المصادقة عند الانتهاء لتوفير الموارد
+  void close() {
+    _client.close();
+  }
+
+  // قراءة ملف حساب الخدمة من مجلد assets وتحويله إلى Map
+  Future<Map<String, dynamic>> readServiceAccountFromAssets() async {
+    final jsonStr =
+        await rootBundle.loadString('assets/service-account.json'); // تحميل الملف
+    return jsonDecode(jsonStr); // تحويل النص إلى خريطة
+  }
+}
