@@ -6,6 +6,7 @@ abstract class ILaunchService {
   Future<bool> openInApp(String url);
   Future<bool> callNumber(String phone);
   Future<bool> sendSMS(String phone, {String? message});
+  Future<void> openWhatsApp(String phoneNumber, {String? text});
   Future<bool> sendEmail({
     required String email,
     String? subject,
@@ -93,6 +94,19 @@ class LaunchService implements ILaunchService {
     final url =
         'https://www.google.com/maps/search/?api=1&query=$lat,$lng${label != null ? '&query_place_id=$label' : ''}';
     return openUrl(url);
+  }
+  @override
+  Future<void> openWhatsApp(String phoneNumber, {String? text}) async {
+    final encodedText = text == null ? '' : Uri.encodeComponent(text);
+    final whatsappUri =
+        Uri.parse('whatsapp://send?phone=$phoneNumber&text=$encodedText');
+    final fallback = Uri.parse('https://wa.me/$phoneNumber?text=$encodedText');
+
+    if (await canLaunchUrl(whatsappUri)) {
+      await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
+    } else {
+      await launchUrl(fallback, mode: LaunchMode.externalApplication);
+    }
   }
 }
 ```
