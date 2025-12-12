@@ -1,14 +1,4 @@
-ToastService.md
 
-ToastService (Enhanced Version)
-
-نسخة محسنة من ToastService بدون أي باكدج، تعمل على Flutter باستخدام Overlay.
-تدعم Singleton، ToastType، Icons، Animation Fade+Slide، وقابلة للاختبار.
-
-
----
-
-1️⃣ IToastService (Interface)
 
 import 'package:flutter/material.dart';
 
@@ -22,16 +12,13 @@ abstract class IToastService {
 }
 
 
----
 
-2️⃣ ToastType Enum
+
+
 
 enum ToastType { success, error, warning, info }
 
 
----
-
-3️⃣ ToastService Implementation
 
 import 'package:flutter/material.dart';
 
@@ -187,65 +174,3 @@ class _ToastWidgetState extends State<_ToastWidget>
 }
 
 
----
-
-4️⃣ طريقة الاستخدام
-
-final toast = ToastService();
-
-// رسالة نجاح
-toast.show(
-  context,
-  message: "تم الحفظ بنجاح!",
-  type: ToastType.success,
-);
-
-// رسالة خطأ
-toast.show(
-  context,
-  message: "حدث خطأ، حاول مرة أخرى",
-  type: ToastType.error,
-);
-
-// تحذير
-toast.show(
-  context,
-  message: "البيانات غير مكتملة",
-  type: ToastType.warning,
-);
-
-// معلومات
-toast.show(
-  context,
-  message: "جارٍ التحميل…",
-  type: ToastType.info,
-);
-
-
----
-
-5️⃣ مميزات النسخة المحسنة
-
-Singleton → نفس الخدمة في كل المشروع
-
-Testable → باستخدام IToastService يمكن عمل Mock
-
-ToastType → لتغيير اللون تلقائيًا
-
-Icon لكل نوع رسالة
-
-Animation Fade + Slide
-
-بدون أي باكدج
-
-
-
----
-
-6️⃣ ملاحظات
-
-يمكن تعديل مكان Toast (bottomMargin) حسب الحاجة
-
-يمكن تغيير مدة العرض (duration) لكل رسالة
-
-Animation سلسة وجميلة على كل الأجهزة
